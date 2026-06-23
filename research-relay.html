@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Research Relay Voting</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #ffffff; color: #1a1a1a; height: 100%; }
+    body { display: flex; flex-direction: column; }
+    .tabs { display: flex; border-bottom: 1.5px solid #e0e0f0; background: #ffffff; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .tab { flex: 1; padding: 14px 4px; font-size: 14px; font-weight: 500; text-align: center; cursor: pointer; color: #888; border-bottom: 3px solid transparent; transition: all 0.2s; background: none; border: none; font-family: inherit; }
+    .tab:hover { color: #5c40cc; }
+    .tab.active { color: #5c40cc; border-bottom: 3px solid #5c40cc; }
+    .tab.organizer-tab { margin-left: auto; font-size: 16px; padding: 12px 14px; }
+    .container { flex: 1; display: flex; flex-direction: column; }
+    .page { display: none; padding: 20px 16px; max-width: 480px; margin: 0 auto; width: 100%; flex: 1; }
+    .page.active { display: block; }
+    h2 { font-size: 20px; font-weight: 500; margin-bottom: 6px; color: #1a1a1a; }
+    .sub { font-size: 14px; color: #666; margin-bottom: 24px; line-height: 1.5; }
+    label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #666; }
+    input[type='text'], input[type='password'] { width: 100%; padding: 14px 16px; font-size: 16px; border: 1.5px solid #d4d0f0; border-radius: 12px; background: #ffffff; color: #1a1a1a; margin-bottom: 16px; outline: none; transition: border-color 0.2s; font-family: inherit; }
+    input[type='text']:focus, input[type='password']:focus { border-color: #5c40cc; box-shadow: 0 0 0 3px rgba(92,64,204,0.1); }
+    .btn-primary { width: 100%; padding: 16px; font-size: 16px; font-weight: 500; color: #ffffff; background: #5c40cc; border: none; border-radius: 14px; cursor: pointer; transition: background 0.2s; margin-top: 4px; font-family: inherit; }
+    .btn-primary:hover:not(:disabled) { background: #4a31aa; }
+    .btn-primary:disabled { background: #b0a8e0; cursor: not-allowed; }
+    .btn-secondary { width: 100%; padding: 14px; font-size: 15px; font-weight: 500; color: #5c40cc; background: transparent; border: 1.5px solid #d4d0f0; border-radius: 12px; cursor: pointer; transition: all 0.2s; margin-top: 8px; font-family: inherit; }
+    .btn-secondary:hover { background: #f5f3ff; border-color: #5c40cc; }
+    .vote-card { background: #ffffff; border: 1.5px solid #d4d0f0; border-radius: 16px; padding: 18px 20px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .vote-card:hover { border-color: #5c40cc; background: #f5f3ff; }
+    .vote-card.selected { border-color: #5c40cc; background: #f0ecff; }
+    .vote-card-name { font-size: 17px; font-weight: 500; }
+    .vote-card-count { font-size: 13px; color: #999; }
+    .check-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #d4d0f0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+    .vote-card.selected .check-circle { background: #5c40cc; border-color: #5c40cc; color: #ffffff; }
+    .notice { padding: 14px 16px; border-radius: 12px; background: #f0ecff; color: #3d2b9e; font-size: 14px; margin-bottom: 20px; border: 1px solid #d4d0f0; }
+    .notice.success { background: #e8f5e9; color: #1b5e20; border-color: #a5d6a7; }
+    .notice.error { background: #fce4ec; color: #880e4f; border-color: #f48fb1; }
+    .notice.info { background: #e3f2fd; color: #0d47a1; border-color: #90caf9; }
+    .section-title { font-size: 16px; font-weight: 500; margin: 24px 0 12px; color: #1a1a1a; }
+    .bar-row { margin-bottom: 10px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: #999; }
+    .bar-label span:first-child { font-weight: 500; color: #1a1a1a; }
+    .bar-bg { background: #ede9f8; border-radius: 8px; height: 22px; overflow: hidden; }
+    .bar-fill { height: 100%; background: #5c40cc; border-radius: 8px; transition: width 0.6s ease; min-width: 2px; }
+    .bar-fill.gold { background: #f0a500; }
+    .winner-box { background: linear-gradient(135deg, #f5f0ff, #ede9f8); border: 2px solid #c4b5fd; border-radius: 18px; padding: 24px 20px; text-align: center; margin-bottom: 24px; }
+    .trophy { font-size: 48px; margin-bottom: 8px; }
+    .winner-group { font-size: 22px; font-weight: 500; color: #3d2b9e; margin-bottom: 4px; }
+    .winner-sub { font-size: 14px; color: #6d52c8; margin-bottom: 16px; }
+    .prize-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .prize-chip { background: #ffffff; border: 1.5px solid #c4b5fd; border-radius: 24px; padding: 8px 16px; font-size: 14px; color: #3d2b9e; }
+    .prize-chip span { display: block; font-size: 11px; color: #9181d0; margin-bottom: 1px; }
+    .group-header { font-size: 15px; font-weight: 500; padding: 10px 0 4px; color: #5c40cc; border-bottom: 1px solid #e8e4f8; margin-bottom: 10px; }
+    .empty { text-align: center; padding: 40px 20px; color: #999; font-size: 15px; }
+    .loading-dots::after { content: '...'; animation: dots 1.2s infinite; }
+    @keyframes dots { 0%{content:'.'} 40%{content:'..'} 80%{content:'...'} }
+    .organizer-control { background: #f8f7fc; border: 1.5px solid #e0d5f8; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .control-title { font-size: 13px; font-weight: 600; text-transform: uppercase; color: #9181d0; margin-bottom: 12px; letter-spacing: 0.5px; }
+    .status-badge { display: inline-block; padding: 8px 16px; border-radius: 24px; background: #5c40cc; color: #ffffff; font-size: 14px; font-weight: 500; margin-bottom: 16px; }
+    .organizer-logged-in { background: #e8f5e9; border-color: #a5d6a7; }
+    .organizer-logged-in .control-title { color: #1b5e20; }
+    @media (max-width: 480px) { .page { padding: 16px 12px; } h2 { font-size: 18px; } .tab { font-size: 13px; padding: 12px 2px; } }
+  </style>
+</head>
+<body>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('r1')">Round 1</button>
+    <button class="tab" onclick="showTab('r2')">Round 2</button>
+    <button class="tab" onclick="showTab('results')">Results</button>
+    <button class="tab organizer-tab" onclick="showTab('organizer')" title="Organizer controls">⚙️</button>
+  </div>
+  <div class="container">
+    <div id="r1" class="page active">
+      <h2>Best presenter vote</h2>
+      <p class="sub">Vote for the best presenter in your group. One vote per device.</p>
+      <div id="r1-content"></div>
+    </div>
+    <div id="r2" class="page">
+      <h2>Best group vote</h2>
+      <p class="sub">Which group gave the best overall presentation?</p>
+      <div id="r2-content"></div>
+    </div>
+    <div id="results" class="page">
+      <h2>Results</h2>
+      <div id="results-content"></div>
+    </div>
+    <div id="organizer" class="page">
+      <h2>Organizer Controls</h2>
+      <div id="organizer-content"></div>
+    </div>
+  </div>
+
+<script>
+// ── Google Sheet backend ──────────────────────────────────────────────────────
+const API = "https://script.google.com/macros/s/AKfycbzi9qsy-JQ-_wTvnlebbCNnryxkErZxr6Vr655caXrb8OLSTAUA6Hfi93SL89iRdBCxpg/exec";
+
+async function apiGet(){
+  const r = await fetch(API + "?t=" + Date.now());
+  return await r.json();
+}
+async function apiPost(round, group, presenter, meta){
+  await fetch(API, { method:"POST", body: JSON.stringify({round, group, presenter: presenter||"", meta: meta||""}) });
+}
+
+// parse raw rows into structured vote objects
+function parseVotes(rows){
+  const r1={}, r2={};
+  rows.forEach(v=>{
+    const g = (v.group||"").trim();
+    if(!g) return;
+    if(Number(v.round)===1){
+      if(!r1[g]) r1[g]={};
+      const p = (v.presenter||"(no name)").trim();
+      r1[g][p] = (r1[g][p]||0)+1;
+    } else if(Number(v.round)===2){
+      r2[g] = (r2[g]||0)+1;
+    }
+  });
+  return {r1, r2};
+}
+
+// ── Per-device memory (one vote per round per device) ────────────────────────
+function getDeviceId(){ let id=localStorage.getItem('rr_device_id'); if(!id){id='dev_'+Math.random().toString(36).slice(2);localStorage.setItem('rr_device_id',id);} return id; }
+const deviceId = getDeviceId();
+function hasVotedR1(){ return localStorage.getItem('rr_r1done_'+deviceId)==='1'; }
+function hasVotedR2(){ return localStorage.getItem('rr_r2done_'+deviceId)==='1'; }
+function markVotedR1(){ localStorage.setItem('rr_r1done_'+deviceId,'1'); }
+function markVotedR2(){ localStorage.setItem('rr_r2done_'+deviceId,'1'); }
+
+// ── Round state stored in Sheet (meta rows) ──────────────────────────────────
+// We store current round as a meta row: round=0, group="__state__", presenter=roundNumber
+async function getCurrentRound(rows){
+  const meta = (rows||[]).filter(v=>v.group==="__state__");
+  if(!meta.length) return 1;
+  return parseInt(meta[meta.length-1].presenter)||1;
+}
+async function setCurrentRound(n){
+  await apiPost(0,"__state__",String(n),"state");
+}
+
+// ── Organizer auth ────────────────────────────────────────────────────────────
+const CORRECT_PASSWORD = 'houhou';
+function isOrganizerLoggedIn(){ return sessionStorage.getItem('rr_org_authenticated')==='1'; }
+function logoutOrganizer(){ sessionStorage.removeItem('rr_org_authenticated'); renderOrganizer(); }
+function authenticateOrganizer(pwd){ if(pwd===CORRECT_PASSWORD){ sessionStorage.setItem('rr_org_authenticated','1'); renderOrganizer(); } else { alert('Incorrect password'); } }
+
+// ── Round 1 ───────────────────────────────────────────────────────────────────
+async function renderR1(){
+  const el = document.getElementById('r1-content');
+  el.innerHTML = '<div class="empty">Loading<span class="loading-dots"></span></div>';
+  let rows=[], round=1;
+  try{ rows=await apiGet(); round=await getCurrentRound(rows); }catch(e){}
+
+  if(round>1){ el.innerHTML='<div class="notice info"><strong>Round 1 has closed.</strong><br>The organizer has moved on to the next round.</div>'; return; }
+  if(hasVotedR1()){ el.innerHTML='<div class="notice success"><strong>Vote recorded!</strong><br>Your vote has been submitted anonymously.</div>'; return; }
+
+  el.innerHTML=`
+    <label>Your group name</label>
+    <input type="text" id="group-input" placeholder="e.g. Group 1" />
+    <label>Best presenter's name</label>
+    <input type="text" id="presenter-input" placeholder="e.g. Alex" />
+    <div id="r1-msg"></div>
+    <button class="btn-primary" onclick="submitR1()">Submit vote</button>`;
+}
+
+async function submitR1(){
+  const group = document.getElementById('group-input').value.trim();
+  const presenter = document.getElementById('presenter-input').value.trim();
+  const msg = document.getElementById('r1-msg');
+  if(!group||!presenter){ msg.innerHTML='<div class="notice error" style="margin-bottom:12px">Please fill in both fields.</div>'; return; }
+  const btn = document.querySelector('#r1 .btn-primary');
+  btn.disabled=true; btn.textContent='Submitting…';
+  try{
+    await apiPost(1, group, presenter);
+    markVotedR1();
+    renderR1();
+  }catch(e){ btn.disabled=false; btn.textContent='Submit vote'; msg.innerHTML='<div class="notice error" style="margin-bottom:12px">Could not save. Check your connection.</div>'; }
+}
+
+// ── Round 2 ───────────────────────────────────────────────────────────────────
+let r2selected = null;
+
+async function renderR2(){
+  const el = document.getElementById('r2-content');
+  el.innerHTML='<div class="empty">Loading<span class="loading-dots"></span></div>';
+  let rows=[], round=1, r1={};
+  try{ rows=await apiGet(); round=await getCurrentRound(rows); const p=parseVotes(rows); r1=p.r1; }catch(e){}
+
+  if(round<2){ el.innerHTML='<div class="notice info"><strong>Round 2 has not started yet.</strong><br>Please wait for the organizer to advance to Round 2.</div>'; return; }
+  if(round>2){ el.innerHTML='<div class="notice info"><strong>Round 2 has closed.</strong><br>Results are now being displayed.</div>'; return; }
+  if(hasVotedR2()){ el.innerHTML='<div class="notice success"><strong>Vote recorded!</strong><br>Your Round 2 vote has been submitted.</div>'; return; }
+
+  const groups = Object.keys(r1);
+  if(!groups.length){ el.innerHTML='<div class="empty">No groups yet. Waiting for Round 1 votes…</div>'; return; }
+
+  r2selected=null;
+  let html='<div id="r2-cards">';
+  groups.forEach(g=>{
+    html+=`<div class="vote-card" id="card-${CSS.escape(g)}" onclick="selectGroup('${g.replace(/'/g,"\\'")}')">
+      <span class="vote-card-name">${g}</span>
+      <span class="check-circle" id="chk-${CSS.escape(g)}"></span>
+    </div>`;
+  });
+  html+='</div><div id="r2-msg"></div><button class="btn-primary" id="r2-btn" onclick="submitR2()" disabled>Submit vote</button>';
+  el.innerHTML=html;
+}
+
+function selectGroup(g){
+  if(r2selected){ const prev=document.getElementById('card-'+CSS.escape(r2selected)); if(prev){prev.classList.remove('selected'); document.getElementById('chk-'+CSS.escape(r2selected)).innerHTML='';} }
+  r2selected=g;
+  const card=document.getElementById('card-'+CSS.escape(g));
+  if(card){ card.classList.add('selected'); document.getElementById('chk-'+CSS.escape(g)).innerHTML='<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 6,11 12,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'; }
+  document.getElementById('r2-btn').disabled=false;
+}
+
+async function submitR2(){
+  if(!r2selected) return;
+  const btn=document.getElementById('r2-btn'); btn.disabled=true; btn.textContent='Submitting…';
+  try{
+    await apiPost(2, r2selected, "");
+    markVotedR2();
+    renderR2();
+  }catch(e){ btn.disabled=false; btn.textContent='Submit vote'; document.getElementById('r2-msg').innerHTML='<div class="notice error" style="margin-bottom:12px">Could not save. Check your connection.</div>'; }
+}
+
+// ── Results ───────────────────────────────────────────────────────────────────
+async function renderResults(){
+  const el=document.getElementById('results-content');
+  el.innerHTML='<div class="empty">Loading results<span class="loading-dots"></span></div>';
+  let r1={}, r2={};
+  try{ const rows=await apiGet(); const p=parseVotes(rows); r1=p.r1; r2=p.r2; }catch(e){ el.innerHTML='<div class="notice error">Could not load results.</div>'; return; }
+
+  const stored_presenter = localStorage.getItem('rr_final_presenter')||'';
+  let html='';
+
+  const r2groups=Object.keys(r2);
+  let winnerGroup='';
+  if(r2groups.length){ const mx=Math.max(...r2groups.map(g=>r2[g])); winnerGroup=r2groups.find(g=>r2[g]===mx)||''; }
+  else if(Object.keys(r1).length){ let mx=0; Object.keys(r1).forEach(g=>{ const t=Object.values(r1[g]).reduce((a,b)=>a+b,0); if(t>mx){mx=t;winnerGroup=g;} }); }
+
+  if(winnerGroup){
+    const wp=r1[winnerGroup]||{};
+    const pnames=Object.keys(wp);
+    const topPresenter=pnames.length?pnames.reduce((a,b)=>wp[a]>wp[b]?a:b):'';
+    html+=`<div class="winner-box">
+      <div class="trophy">🏆</div>
+      <div class="winner-group">${winnerGroup}</div>
+      <div class="winner-sub">Winning group</div>
+      <div class="prize-row">
+        <div class="prize-chip"><span>Original researcher</span>${topPresenter||'—'}</div>
+        <div class="prize-chip"><span>Final presenter</span><span id="fp-display">${stored_presenter||'—'}</span></div>
+      </div>
+      <div style="margin-top:16px">
+        <input type="text" id="fp-input" placeholder="Enter final presenter name" value="${stored_presenter}" style="margin-bottom:8px" />
+        <button class="btn-primary" onclick="saveFP()" style="margin-top:0">Save presenter name</button>
+      </div>
+    </div>`;
+  }
+
+  html+='<div class="section-title">Round 1 — presenter votes by group</div>';
+  const r1groups=Object.keys(r1);
+  if(!r1groups.length){ html+='<div class="empty" style="padding:20px 0">No votes yet.</div>'; }
+  else{
+    r1groups.forEach(g=>{
+      html+=`<div class="group-header">${g}</div>`;
+      const presenters=r1[g]; const maxV=Math.max(...Object.values(presenters));
+      Object.entries(presenters).sort((a,b)=>b[1]-a[1]).forEach(([name,v])=>{
+        const pct=maxV>0?Math.round(v/maxV*100):0;
+        html+=`<div class="bar-row"><div class="bar-label"><span>${name}</span><span>${v} vote${v!==1?'s':''}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div></div>`;
+      });
+    });
+  }
+
+  html+='<div class="section-title">Round 2 — group votes</div>';
+  if(!r2groups.length){ html+='<div class="empty" style="padding:20px 0">No votes yet.</div>'; }
+  else{
+    const maxV2=Math.max(...r2groups.map(g=>r2[g]));
+    r2groups.sort((a,b)=>r2[b]-r2[a]).forEach(g=>{
+      const pct=maxV2>0?Math.round(r2[g]/maxV2*100):0; const isW=g===winnerGroup;
+      html+=`<div class="bar-row"><div class="bar-label"><span>${g}${isW?' 🏆':''}</span><span>${r2[g]} vote${r2[g]!==1?'s':''}</span></div><div class="bar-bg"><div class="bar-fill${isW?' gold':''}" style="width:${pct}%"></div></div></div>`;
+    });
+  }
+
+  el.innerHTML=html;
+}
+
+function saveFP(){
+  const val=document.getElementById('fp-input').value.trim();
+  localStorage.setItem('rr_final_presenter', val);
+  const disp=document.getElementById('fp-display'); if(disp) disp.textContent=val||'—';
+}
+
+// ── Organizer ─────────────────────────────────────────────────────────────────
+async function renderOrganizer(){
+  const el=document.getElementById('organizer-content');
+  if(!isOrganizerLoggedIn()){
+    el.innerHTML=`<p class="sub">Enter your password to access organizer controls.</p>
+      <label>Password</label>
+      <input type="password" id="org-password" placeholder="Enter password" onkeypress="if(event.key==='Enter') submitOrgPassword()" />
+      <button class="btn-primary" onclick="submitOrgPassword()">Unlock</button>`;
+    return;
+  }
+
+  el.innerHTML='<div class="empty">Loading<span class="loading-dots"></span></div>';
+  let rows=[], round=1, r1={}, r2={};
+  try{ rows=await apiGet(); round=await getCurrentRound(rows); const p=parseVotes(rows); r1=p.r1; r2=p.r2; }catch(e){}
+
+  const r1count=Object.values(r1).reduce((sum,g)=>sum+Object.values(g).reduce((a,b)=>a+b,0),0);
+  const r2count=Object.values(r2).reduce((sum,v)=>sum+v,0);
+
+  let html=`<div class="organizer-control organizer-logged-in">
+    <div class="control-title">Status</div>
+    <div class="status-badge">Currently on Round ${round}</div>
+    <p style="font-size:14px;color:#1b5e20;margin-bottom:16px">Round 1 votes: <strong>${r1count}</strong> | Round 2 votes: <strong>${r2count}</strong></p>`;
+
+  if(round===1){ html+=`<button class="btn-primary" onclick="advanceRound(2)" style="background:#4caf50">Proceed to Round 2</button>`; }
+  else if(round===2){ html+=`<button class="btn-primary" onclick="advanceRound(3)" style="background:#4caf50">Show Results</button>`; }
+  else{ html+=`<p style="font-size:14px;color:#1b5e20;padding:12px;background:#c8e6c9;border-radius:8px;margin-bottom:12px">✓ All rounds complete</p>`; }
+
+  html+=`<button class="btn-secondary" onclick="resetAllVotes()">Reset all votes</button>
+    <button class="btn-secondary" onclick="logoutOrganizer()" style="color:#d32f2f;border-color:#ffcdd2">Log out</button>
+    </div>`;
+  el.innerHTML=html;
+}
+
+function submitOrgPassword(){ authenticateOrganizer(document.getElementById('org-password').value); }
+
+async function advanceRound(n){
+  if(confirm(`Move to Round ${n===3?'Results':n}?`)){ await setCurrentRound(n); renderOrganizer(); renderR1(); renderR2(); }
+}
+
+async function resetAllVotes(){
+  if(confirm('This will delete ALL votes. Are you sure?')){
+    await apiPost(0,"__reset__","1","reset");
+    // clear local vote flags for this device
+    localStorage.removeItem('rr_r1done_'+deviceId);
+    localStorage.removeItem('rr_r2done_'+deviceId);
+    localStorage.removeItem('rr_final_presenter');
+    alert('All votes have been reset.');
+    renderOrganizer();
+  }
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>{ t.classList.toggle('active',['r1','r2','results','organizer'][i]===tab); });
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===tab));
+  if(tab==='r1') renderR1();
+  else if(tab==='r2') renderR2();
+  else if(tab==='results') renderResults();
+  else if(tab==='organizer') renderOrganizer();
+}
+
+renderR1();
+</script>
+</body>
+</html>
